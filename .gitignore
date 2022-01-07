@@ -1,2 +1,4 @@
 _venv
 .vscode
+__pycache__
+output
