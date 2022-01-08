@@ -1,11 +1,10 @@
-from tkinter import Grid, IntVar, PhotoImage, StringVar, Tk, Toplevel
-from tkinter.constants import BOTTOM, CENTER, DISABLED, E, END, EW, HORIZONTAL, LEFT, N, NS, RIGHT, S, VERTICAL, W, X, Y, YES
+from tkinter import PhotoImage, StringVar, Tk
+from tkinter.constants import CENTER, END, HORIZONTAL, LEFT, N, NS, VERTICAL, W, YES
 from tkinter.font import BOLD
 from tkinter.ttk import Button, Entry, Frame, Label, Progressbar, Scrollbar, Treeview
 from tkinter.filedialog import asksaveasfilename
-from tkinter.messagebox  import showerror, showinfo, askyesno
-from downloader import Downloader, FileFormat
-from threading import Thread
+from tkinter.messagebox  import showerror, showinfo
+from downloader import Downloader
 
 def start_gui():
     root = Tk()
@@ -18,6 +17,8 @@ def start_gui():
     center_x = int(screen_width / 2 - window_width / 2)
     center_y = int(screen_height / 2 - window_height + window_height / 4)
     root.geometry(f"{window_width}x{window_height}+{center_x}+{center_y}")
+    icon = PhotoImage(file="./assets/youtube_logo.png")
+    root.iconphoto(True, icon)
 
     downloader = Downloader()
 
@@ -25,15 +26,17 @@ def start_gui():
     frame = Frame(root, width=700, padding=5)
     frame.pack()
     url = StringVar()
-    url_label = Label(frame, text="Video URL", font="Helvetica 14 bold")
+    url_label = Label(frame, text="Video URL", font="Helvetica 16 bold")
     url_label.grid(column=0, row=0, sticky=W)
     url_text = Entry(frame, textvariable=url, width=50, font="Helvetica 12")
     url_text.grid(column=1, row=0)
 
+    # TODO add progress bar for retrieving formats
+
     # video info UI
     title = StringVar(value="None")
     output_path = StringVar(value=downloader.get_output_path())
-    title_label = Label(frame, text="Title: ", font="Helvetica 14 bold")
+    title_label = Label(frame, text="Title: ", font="Helvetica 16 bold")
     title_label.grid(column=0, row=1)
     title_text = Label(frame, textvariable=title, font="Helvetica 12", wraplength=600, justify=LEFT)
     title_text.grid(column=1, row=1, sticky=N)
@@ -123,7 +126,6 @@ def start_gui():
     # root.protocol("WM_DELETE_WINDOW", on_close)
 
     root.mainloop()
-
 
 if __name__ == "__main__":
     start_gui()
