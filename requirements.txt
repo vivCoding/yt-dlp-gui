@@ -1,8 +1,7 @@
+altgraph==0.17.2
 mutagen==1.45.1
 pycryptodomex==3.12.0
-websockets==10.1
-yt-dlp==2021.12.27
-mutagen==1.45.1
-pycryptodomex==3.12.0
+pyinstaller==4.7
+pyinstaller-hooks-contrib==2021.5
 websockets==10.1
 yt-dlp==2021.12.27

@@ -1,6 +1,5 @@
 from tkinter import PhotoImage, StringVar, Tk
 from tkinter.constants import CENTER, END, HORIZONTAL, LEFT, N, NS, VERTICAL, W, YES
-from tkinter.font import BOLD
 from tkinter.ttk import Button, Entry, Frame, Label, Progressbar, Scrollbar, Treeview
 from tkinter.filedialog import asksaveasfilename
 from tkinter.messagebox  import showerror, showinfo
