@@ -1,3 +1,4 @@
+import shutil
 from yt_dlp import YoutubeDL
 from yt_dlp.utils import format_bytes, format_field, join_nonempty
 import os
@@ -23,15 +24,16 @@ class FileFormat:
                 format_field(params, 'container', ignore=(None, params.get('ext'))),
                 delim=', '),
             delim=' ')
+    
+    def as_tuple(self) -> tuple:
+        return (
+            self.format_id, self.ext, self.resolution, self.fps,
+            self.filesize, self.vcodec, self.acodec
+        )
 
 class Downloader:
-    params = {
-        "windowsfilenames": True,
-        "overwrites": True,
-    }
 
     def __init__(self) -> None:
-        self.dl: YoutubeDL = YoutubeDL(params=Downloader.params)
         self.url = ""
         self.formats: list[FileFormat] = []
         self.format_code = ""
@@ -39,6 +41,8 @@ class Downloader:
         self.ext = ""
         self.output_dir = os.getcwd()
         self.output_filename = ""
+        self.progress_hooks = []
+        self.is_downloading = False
 
     def set_url(self, url: str) -> None:
         self.url = url
@@ -51,7 +55,7 @@ class Downloader:
 
     def get_info(self) -> dict:
         try:
-            data = self.dl.extract_info(self.url, download=False)
+            data = YoutubeDL().extract_info(self.url, download=False)
             self.formats = [FileFormat(format) for format in data["formats"]]
             self.title = data["title"]
             self.output_filename = self.title
@@ -93,18 +97,34 @@ class Downloader:
         else: return False
 
     def add_progress_hook(self, hook) -> None:
-        self.dl._progress_hooks = [hook]
+        self.progress_hooks.append(hook)
 
     def download(self) -> bool:
         try:
-            self.dl.params["format"] = self.format_code
-            self.dl.outtmpl_dict = {
-                "default": os.path.join(self.output_dir, self.output_filename) + ".%(ext)s",
-                "chapter": os.path.join(self.output_dir, self.output_filename) + "- %(section_number)03d %(section_title)s.%(ext)s"
+            self.is_downloading = True
+            temp_dir = os.path.join(self.output_dir, "temp")
+            params = {
+                "windowsfilenames": True,
+                "overwrites": True,
+                "format": self.format_code,
+                "outtmpl": {
+                    "default": os.path.join(temp_dir, self.output_filename) + ".%(ext)s",
+                    "chapter": os.path.join(temp_dir, self.output_filename) + "- %(section_number)03d %(section_title)s.%(ext)s"
+                },
+                "progress_hooks": self.progress_hooks
             }
-            # TODO: add temp download folder
-            self.dl.download([self.url])
+            with YoutubeDL(params) as dl:
+                dl.download([self.url])
+            shutil.move(os.path.join(temp_dir, self.output_filename) + "." + self.ext, self.get_output_path())
+            self.clean()
+            self.is_downloading = False
             return True
         except Exception as e:
             print ("ytdlp download error:", e)
+            self.is_downloading = False
             return False
+
+    def clean(self) -> None:
+        temp_dir = os.path.join(self.output_dir, "temp")
+        if os.path.isdir(temp_dir):
+            shutil.rmtree(temp_dir)

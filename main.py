@@ -1,8 +1,9 @@
 from tkinter import Grid, IntVar, PhotoImage, StringVar, Tk, Toplevel
-from tkinter.constants import HORIZONTAL, W
-from tkinter.ttk import Button, Entry, Frame, Label, Progressbar
+from tkinter.constants import BOTTOM, CENTER, DISABLED, E, END, EW, HORIZONTAL, LEFT, N, NS, RIGHT, S, VERTICAL, W, X, Y, YES
+from tkinter.font import BOLD
+from tkinter.ttk import Button, Entry, Frame, Label, Progressbar, Scrollbar, Treeview
 from tkinter.filedialog import asksaveasfilename
-from tkinter.messagebox  import showerror
+from tkinter.messagebox  import showerror, showinfo, askyesno
 from downloader import Downloader, FileFormat
 from threading import Thread
 
@@ -12,91 +13,114 @@ def start_gui():
     root.title("Simple YouTube Video Downloader")
     screen_width = root.winfo_screenwidth()
     screen_height = root.winfo_screenheight()
-    window_width = 600
-    window_height = 400
+    window_width = 900
+    window_height = 450
     center_x = int(screen_width / 2 - window_width / 2)
     center_y = int(screen_height / 2 - window_height + window_height / 4)
     root.geometry(f"{window_width}x{window_height}+{center_x}+{center_y}")
 
     downloader = Downloader()
 
-    # url UI
-    url_frame = Frame(root)
-    url_frame.grid(column=0, row=0, sticky=W)
+    # url and video info UI
+    frame = Frame(root, width=700, padding=5)
+    frame.pack()
     url = StringVar()
-    url_label = Label(url_frame, text="Video URL")
+    url_label = Label(frame, text="Video URL", font="Helvetica 14 bold")
     url_label.grid(column=0, row=0, sticky=W)
-    url_text = Entry(url_frame, textvariable=url)
-    url_text.grid(column=1, row=0,sticky=W)
+    url_text = Entry(frame, textvariable=url, width=50, font="Helvetica 12")
+    url_text.grid(column=1, row=0)
 
     # video info UI
-    info_frame = Frame(root)
-    info_frame.grid(column=0, row=1, sticky=W)
     title = StringVar(value="None")
     output_path = StringVar(value=downloader.get_output_path())
-    title_label = Label(info_frame, text="Title")
+    title_label = Label(frame, text="Title: ", font="Helvetica 14 bold")
     title_label.grid(column=0, row=1)
-    title_text = Label(info_frame, textvariable=title)
-    title_text.grid(column=1, row=1)
+    title_text = Label(frame, textvariable=title, font="Helvetica 12", wraplength=600, justify=LEFT)
+    title_text.grid(column=1, row=1, sticky=N)
+
+    # video info table
+    info_table_frame = Frame(root, padding=5)
+    info_table_frame.pack()
+    headings = ("Id", "Ext", "Resolution", "FPS", "Filesize", "vcodec", "acodec")
+    tree = Treeview(info_table_frame, columns=headings, show="headings", selectmode="browse")
+    for heading in headings:
+        tree.column(heading, stretch=YES, width=100, anchor=CENTER)
+        tree.heading(heading, text=heading)
+    tree.grid(column=0, row=0, sticky=W)
+
+    tree_vscrollbar = Scrollbar(info_table_frame, orient=VERTICAL, command=tree.yview)
+    tree.configure(yscrollcommand=tree_vscrollbar.set)
+    tree_vscrollbar.grid(column=1, row=0, sticky=NS)
+
     def get_info():
         downloader.set_url(url.get())
         downloader.get_info()
         title.set(downloader.title)
         output_path.set(downloader.get_output_path())
-        # TODO: update table and jazz
-    
-    get_info_button = Button(url_frame, text="Get Video Info", command=get_info)
+        # clear table and insert new stuff
+        for child in tree.winfo_children():
+            child.destroy()
+        for format in downloader.formats:
+            tree.insert("", END, values=format.as_tuple())
+
+    def item_selected(event):
+        code = tree.item(tree.selection()[0])["values"][0]
+        downloader.set_format(str(code))
+    tree.bind('<<TreeviewSelect>>', item_selected)
+
+    get_info_button = Button(frame, text="Get Video Info", command=get_info)
     get_info_button.grid(column=2, row=0)
 
-    # output path UI
-    output_frame = Frame(root)
-    output_frame.grid(column=0, row=2, sticky=W)
-    output_path_label = Label(root, text="Download file to:")
-    output_path_label.grid(column=0, row=2, sticky=W)
-    output_path_text = Label(root, textvariable=output_path)
-    output_path_text.grid(column=1, row=2, sticky=W)
-    def change_output_path():
-        path = asksaveasfilename(title="Select Output Path", initialdir=downloader.get_output_dir(), initialfile=downloader.get_output_filename())
-        while not downloader.set_output_path(path):
-            showerror(title="Bad file path", message="Bad file path. Please select a different path!")
-            path = asksaveasfilename(title="Select Output Path", initialdir=downloader.get_output_dir(), initialfile=downloader.get_output_filename())
-        output_path.set(path)
-    change_output_path_button = Button(root, text="Change", command=change_output_path)
-    change_output_path_button.grid(column=2, row=2, sticky=W)
-
     # download video UI
-    download_frame = Frame(root)
-    download_frame.grid(column=0, row=3)
+    download_frame = Frame(root, padding=5)
+    download_frame.pack()
 
-    # download progress window
+    status_frame = Frame(root, padding=5)
+    status = StringVar(value="Status")
+    status_text = Label(status_frame, textvariable=status)
+    status_text.pack()
+    progress = StringVar("")
+    progress_text = Label(status_frame, textvariable=progress)
+    progress_text.pack()
+    progress_bar = Progressbar(status_frame, orient=HORIZONTAL, mode="determinate")
+    progress_bar.pack()
+
     def start_download():
-        window = Toplevel(root)
-        window.geometry(f"300x200+{center_x}+{center_y}")
-        window.title("Progress")
+        # ask for path
+        if not downloader.is_downloading:
+            path = asksaveasfilename(title="Select Output Path", initialdir=downloader.get_output_dir(), initialfile=downloader.get_output_filename())
+            if not downloader.set_output_path(path):
+                showerror(title="Bad file path", message="Bad file path. Please select a different path!")
+                return
+            status_frame.pack()
+            downloader.download()
 
-        status = StringVar(value="Status")
-        status_text = Label(window, textvariable=status)
-        status_text.pack()
-        progress = StringVar("")
-        progress_text = Label(window, textvariable=progress)
-        progress_text.pack()
-        progress_bar = Progressbar(window, orient=HORIZONTAL, mode="determinate")
-        progress_bar.pack()
+    def update_progress(p):
+        status.set(p["status"].capitalize())
+        if p["status"] == "downloading":
+            pv = p["_percent_str"].replace("\u001b[0;94m", "").replace("%\u001b[0m", "")
+            progress_bar["value"] = float(pv)
+            progress.set(pv + "%")
+        elif p["status"] == "finished":
+            showinfo("Finished", message="Video download succeeded!")
+            status_frame.pack_forget()
+        elif p["status"] == "error":
+            showerror(title="Error", message="Error downloading video. Please try again later!")
+            status_frame.pack_forget()
+        root.update_idletasks()
 
-        def update_progress(p):
-            status.set(p["status"].capitalize())
-            if p["status"] == "downloading":
-                pv = p["_percent_str"].replace("\u001b[0;94m", "").replace("%\u001b[0m", "")
-                progress_bar["value"] = float(pv)
-                progress.set(pv + "%")
-            window.update_idletasks()
-        
-        downloader.add_progress_hook(update_progress)
-        downloader.download()
-        window.destroy()
-    
+    downloader.add_progress_hook(update_progress)
     download_button = Button(download_frame, text="Download", command=start_download)
-    download_button.grid(column=0, row=3)
+    download_button.grid(column=0, row=0)
+
+    # TODO cancel
+    # def on_close():
+    #     # User probably wants to cancel if closing progress window
+    #     confirm_exit = askyesno(title='Cancel', message="Are you sure you want to cancel?")
+    #     if confirm_exit:
+    #         root.destroy()
+    #         downloader.clean()
+    # root.protocol("WM_DELETE_WINDOW", on_close)
 
     root.mainloop()
 
