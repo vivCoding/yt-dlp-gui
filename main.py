@@ -81,7 +81,7 @@ def start_gui():
     status = StringVar(value="Status")
     status_text = Label(status_frame, textvariable=status)
     status_text.pack()
-    progress = StringVar("")
+    progress = StringVar(value="")
     progress_text = Label(status_frame, textvariable=progress)
     progress_text.pack()
     progress_bar = Progressbar(status_frame, orient=HORIZONTAL, mode="determinate")

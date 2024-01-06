@@ -32,7 +32,6 @@ class FileFormat:
         )
 
 class Downloader:
-
     def __init__(self) -> None:
         self.url = ""
         self.formats: list[FileFormat] = []
