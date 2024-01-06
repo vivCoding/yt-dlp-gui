@@ -16,8 +16,9 @@ def start_gui():
     center_x = int(screen_width / 2 - window_width / 2)
     center_y = int(screen_height / 2 - window_height + window_height / 4)
     root.geometry(f"{window_width}x{window_height}+{center_x}+{center_y}")
-    icon = PhotoImage(file="./assets/youtube_logo.png")
-    root.iconphoto(True, icon)
+    # TODO remove dependency of asset path
+    # icon = PhotoImage(file="./assets/youtube_logo.png")
+    # root.iconphoto(True, icon)
 
     downloader = Downloader()
 
